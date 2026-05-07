@@ -1,6 +1,11 @@
+import os
 import requests
 import pandas as pd
 from datetime import datetime, timedelta
+from dotenv import load_dotenv
+import hopsworks
+
+load_dotenv()
 
 def fetch_historical_aqi(lat, lon, days=90):
     end_date = datetime.utcnow().date()
@@ -37,6 +42,21 @@ def engineer_features(df):
     
     return df_engineered
 
+def push_to_feature_store(df):
+    """Connects to Hopsworks and pushes the DataFrame to a Feature Group."""
+    project = hopsworks.login()
+    fs = project.get_feature_store()
+    
+    weather_fg = fs.get_or_create_feature_group(
+        name="pearl_weather_features_v1",
+        version=1,
+        primary_key=["time"],
+        description="Hourly weather and AQI momentum features for Islamabad"
+    )
+    
+    print("Uploading data to Hopsworks Feature Store. ...")
+    weather_fg.insert(df)
+
 if __name__ == "__main__":
     print("Fetching data from OpenMeteo for Islamabad...")
     df_raw = fetch_historical_aqi(33.6844, 73.0479)
@@ -44,5 +64,7 @@ if __name__ == "__main__":
     print("Engineering features...")
     df_features = engineer_features(df_raw)
     
-    print("Pipeline successful! Data sample:")
-    print(df_features[['time', 'european_aqi', 'aqi_momentum']].head())
+    print("Connecting to Feature Store...")
+    push_to_feature_store(df_features)
+    
+    print("Pipeline execution complete!")
