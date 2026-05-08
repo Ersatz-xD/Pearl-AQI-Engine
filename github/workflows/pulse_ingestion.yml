@@ -1,0 +1,31 @@
+name: Pearl AQI Pulse Ingestion
+
+on:
+  schedule:
+    - cron: '0 * * * *' 
+  workflow_dispatch: 
+
+jobs:
+  ingest_and_push:
+    runs-on: ubuntu-latest 
+    
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4 
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5 
+        with:
+          python-version: '3.11'
+          cache: 'pip' 
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r feature-pipeline/requirements.txt # Uses your shopping list
+
+      - name: Execute Extraction Pipeline
+        env:
+          
+          HOPSWORKS_API_KEY: ${{ secrets.HOPSWORKS_API_KEY }} 
+        run: python feature-pipeline/extractor_meteo.py 
