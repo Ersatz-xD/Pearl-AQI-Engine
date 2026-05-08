@@ -2,7 +2,7 @@ name: Pearl AQI Pulse Ingestion
 
 on:
   schedule:
-    - cron: '0 * * * *' 
+    - cron: '27 * * * *' 
   workflow_dispatch: 
 
 jobs:
