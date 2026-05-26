@@ -1,4 +1,5 @@
 import os
+import time
 import joblib
 import hopsworks
 import pandas as pd
@@ -12,9 +13,25 @@ def run_training_pipeline():
     project = hopsworks.login()
     fs = project.get_feature_store()
 
-    print("2. Fetching the latest feature data...")
+    print("2. Fetching the latest feature data (with Fault Tolerance)...")
     weather_fg = fs.get_feature_group(name="pearl_weather_features_v1", version=1)
-    df = weather_fg.show(500) # Using our highly available storage bypass
+    
+    #RETRY LOGIC
+    df = None
+    for attempt in range(5):
+        try:
+            print(f"  -> Download attempt {attempt + 1}/5...")
+            df = weather_fg.show(500)
+            if df is not None:
+                print("  -> Data downloaded successfully!")
+                break
+        except Exception as e:
+            print(f"  -> Server busy. Retrying in 15 seconds...")
+            time.sleep(15)
+            
+    if df is None:
+        raise ConnectionError("Hopsworks stream completely blocked after 5 attempts. Try again later.")
+
     df = df.sort_values('time').reset_index(drop=True)
 
     print("3. Preparing data splits...")
