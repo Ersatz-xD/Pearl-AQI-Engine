@@ -20,7 +20,7 @@ jobs:
           
       - name: Install ML Dependencies
         run: |
-          pip install hopsworks pandas numpy scikit-learn joblib
+          pip install hopsworks pandas numpy scikit-learn joblib pyarrow
 
       - name: Execute Training Pipeline
         env:
