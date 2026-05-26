@@ -25,4 +25,4 @@ jobs:
       - name: Execute Training Pipeline
         env:
           HOPSWORKS_API_KEY: ${{ secrets.HOPSWORKS_API_KEY }}
-        run: python training_pipeline.py
+        run: python feature-pipeline/training_pipeline.py
