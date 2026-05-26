@@ -1,0 +1,28 @@
+name: Pearl AQI Daily Model Training
+
+on:
+  schedule:
+    - cron: '30 2 * * *' 
+  workflow_dispatch: 
+
+jobs:
+  train_and_register:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          
+      - name: Install ML Dependencies
+        run: |
+          pip install hopsworks pandas numpy scikit-learn joblib
+
+      - name: Execute Training Pipeline
+        env:
+          HOPSWORKS_API_KEY: ${{ secrets.HOPSWORKS_API_KEY }}
+        run: python training_pipeline.py
