@@ -26,8 +26,8 @@ pearl_core.add_middleware(
 
 hw_connection = None
 feature_vault = None
-prophet_ensemble = None      # The Random Forest Brain
-quantum_explainer = None     # The SHAP Explainability Matrix
+prophet_ensemble = None      
+quantum_explainer = None     
 
 @pearl_core.on_event("startup")
 async def ignite_sequence():
@@ -61,21 +61,13 @@ def generate_forecast():
     global feature_vault, prophet_ensemble, quantum_explainer
     
     try:
-        # 1. Extract the latest telemetry (Assuming OpenMeteo gave us future 72 hours of weather)
         feature_view = feature_vault.get_feature_view(name="pearl_weather_view_v1", version=1)
         telemetry_matrix = feature_view.get_batch_data()
-        
-        # Sort chronologically and isolate the next 72 hours (3 days)
         telemetry_matrix = telemetry_matrix.sort_values('time').tail(72).reset_index(drop=True)
         
-        # Separate timestamps from the raw math features
         timeline = telemetry_matrix['time'].astype(str).tolist()
         x_matrix = telemetry_matrix.drop(columns=['time', 'european_aqi'], errors='ignore')
-        
-        # 2. Compute the 72-hour prediction array
         forecast_array = prophet_ensemble.predict(x_matrix)
-        
-        # 3. Generate Explainability for the CURRENT hour (Index 0)
         current_features = x_matrix.iloc[0:1]
         shap_matrix = quantum_explainer.shap_values(current_features)[0]
         
@@ -91,19 +83,16 @@ def generate_forecast():
             
         explainability_payload = sorted(explainability_payload, key=lambda x: abs(x['impact']), reverse=True)
         
-        # --- THE FIX: Safely extract the baseline value whether it is a number or an array ---
         raw_baseline = quantum_explainer.expected_value
         if isinstance(raw_baseline, (list, pd.Series)) or type(raw_baseline).__name__ == 'ndarray':
             safe_baseline = raw_baseline[0]
         else:
             safe_baseline = raw_baseline
-        # -------------------------------------------------------------------------------------
 
-        # 4. Package the final JSON payload
         return {
             "nexus_timestamp": timeline[0],
             "current_aqi": round(float(forecast_array[0]), 2),
-            "baseline_aqi": round(float(safe_baseline), 2), # Using our safely extracted number!
+            "baseline_aqi": round(float(safe_baseline), 2), 
             "drivers": explainability_payload,
             "horizon_forecast": [
                 {"time": t, "predicted_aqi": round(float(aqi), 2)} 
