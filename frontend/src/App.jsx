@@ -1,22 +1,32 @@
-import { useState, useEffect } from 'react';
-import axios from 'axios';
-import { 
-  LineChart, Line, BarChart, Bar, XAxis, YAxis, 
-  CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Cell 
-} from 'recharts';
-import { Activity, Wind, AlertTriangle } from 'lucide-react';
-import './App.css'; // Standard Vite CSS file
+import { useState, useEffect } from "react";
+import axios from "axios";
+import {
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  ReferenceLine,
+  Cell,
+} from "recharts";
+import { Sparkles, Wind } from "lucide-react";
+import "./App.css";
 
 function App() {
   const [engineData, setEngineData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // 1. Fetch Data from our FastAPI Backend
   useEffect(() => {
     const fetchForecast = async () => {
       try {
-        const response = await axios.get('http://127.0.0.1:8000/api/v1/forecast');
+        const response = await axios.get(
+          "http://127.0.0.1:8000/api/v1/forecast",
+        );
         setEngineData(response.data);
         setLoading(false);
       } catch (err) {
@@ -27,89 +37,251 @@ function App() {
     fetchForecast();
   }, []);
 
-  // 2. Dynamic Visual Alerts (EPA Standard Colors)
-  const getAqiColor = (aqi) => {
-    if (aqi <= 50) return '#10B981'; // Good (Green)
-    if (aqi <= 100) return '#F59E0B'; // Moderate (Yellow)
-    if (aqi <= 150) return '#F97316'; // Unhealthy for Sensitive (Orange)
-    if (aqi <= 200) return '#EF4444'; // Unhealthy (Red)
-    return '#8B5CF6'; // Very Unhealthy/Hazardous (Purple)
+  const getAqiSnark = (eaqi) => {
+    if (eaqi <= 20)
+      return "Air as crisp as a freshly ironed shirt. Go touch some grass.";
+    if (eaqi <= 40)
+      return "Not bad. A perfectly acceptable day to exist outdoors.";
+    if (eaqi <= 60)
+      return "It's getting a bit hazy. You can literally taste the city today.";
+    if (eaqi <= 80)
+      return "The air looks like soup. Consider breathing 20% less today.";
+    return "Welcome to the apocalypse. N95 masks are the new fashion trend.";
   };
 
-  if (loading) return <div className="loading-screen">Booting Pearl Nexus...</div>;
-  if (error) return <div className="error-screen"><AlertTriangle /> System Failure: {error}</div>;
+  const getEaqiLabel = (eaqi) => {
+    if (eaqi <= 20) return "Good";
+    if (eaqi <= 40) return "Fair";
+    if (eaqi <= 60) return "Moderate";
+    if (eaqi <= 80) return "Poor";
+    return "Very Poor";
+  };
 
-  const currentColor = getAqiColor(engineData.current_aqi);
+  const getEaqiColor = (eaqi) => {
+    if (eaqi <= 20) return "var(--forest-green)";
+    if (eaqi <= 40) return "#8BA888";
+    if (eaqi <= 60) return "#D4AF37";
+    if (eaqi <= 80) return "var(--terracotta)";
+    return "#8B0000";
+  };
+
+  const convertEaqiToUsAqi = (eaqi) => {
+    if (eaqi <= 20) return Math.round(eaqi * 2.5);
+    if (eaqi <= 40) return Math.round(50 + (eaqi - 20) * 2.5);
+    if (eaqi <= 60) return Math.round(100 + (eaqi - 40) * 2.5);
+    if (eaqi <= 80) return Math.round(150 + (eaqi - 60) * 2.5);
+    return Math.round(200 + (eaqi - 80) * 5);
+  };
+
+  const getDailyForecasts = (forecast) => {
+    if (!forecast) return [];
+    const dailyData = {};
+
+    forecast.forEach((entry) => {
+      const date = entry.time.split(" ")[0];
+      if (!dailyData[date]) {
+        dailyData[date] = [];
+      }
+      dailyData[date].push(entry.predicted_aqi);
+    });
+
+    const dates = Object.keys(dailyData);
+    const futureDates = dates.slice(1, 4);
+
+    return futureDates.map((date) => {
+      const avg =
+        dailyData[date].reduce((a, b) => a + b, 0) / dailyData[date].length;
+      const [, month, day] = date.split("-");
+      return {
+        date: `${month}/${day}`,
+        aqi: (Math.round(avg * 100) / 100).toFixed(2),
+      };
+    });
+  };
+
+  if (loading)
+    return <div className="loading-screen">Consulting the oracle...</div>;
+
+  if (error)
+    return <div className="error-screen">System Malfunction: {error}</div>;
+
+  const currentEaqi = engineData.current_aqi;
+  const snark = getAqiSnark(currentEaqi);
+  const activeColor = getEaqiColor(currentEaqi);
+  const usAqiEstimate = convertEaqiToUsAqi(currentEaqi);
+  const currentLabel = getEaqiLabel(currentEaqi);
+  const dailyForecasts = getDailyForecasts(engineData.horizon_forecast);
 
   return (
-    <div className="dashboard-container" style={{ padding: '2rem', fontFamily: 'system-ui, sans-serif', backgroundColor: '#0F172A', color: '#F8FAFC', minHeight: '100vh' }}>
-      
-      {/* HEADER */}
-      <header style={{ borderBottom: '1px solid #334155', paddingBottom: '1rem', marginBottom: '2rem' }}>
-        <h1 style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: 0 }}>
-          <Activity color="#38BDF8" /> Pearl AQI Nexus
-        </h1>
-        <p style={{ color: '#94A3B8', margin: '5px 0 0 0' }}>Live System Telemetry: {engineData.nexus_timestamp}</p>
+    <div className="dashboard-container">
+      <header className="header">
+        <div>
+          <h1 className="header-title">
+            <i className="highlight-text">Pearl</i> AQI Engine
+          </h1>
+          <p className="header-subtitle">
+            Islamabad Telemetry • Powered by Hopsworks & MLflow
+          </p>
+        </div>
+        <div className="header-updated">
+          Updated: {engineData.nexus_timestamp.split(" ")[1]}
+        </div>
       </header>
 
-      {/* TOP METRIC: THE CURRENT AQI */}
-      <section style={{ display: 'flex', gap: '2rem', marginBottom: '2rem' }}>
-        <div style={{ flex: 1, backgroundColor: '#1E293B', padding: '2rem', borderRadius: '12px', borderLeft: `8px solid ${currentColor}` }}>
-          <h2 style={{ color: '#94A3B8', margin: '0 0 10px 0', fontSize: '1.2rem' }}>Current Air Quality Index</h2>
-          <div style={{ fontSize: '4rem', fontWeight: 'bold', color: currentColor, lineHeight: '1' }}>
-            {engineData.current_aqi}
+      <section className="hero-card">
+        <div className="hero-content">
+          <div className="hero-left">
+            <h2 className="hero-title">{snark}</h2>
+            <p className="hero-subtitle">
+              Based on a baseline average of {engineData.baseline_aqi} EAQI.
+            </p>
           </div>
-          <p style={{ color: '#94A3B8', marginTop: '10px' }}>Baseline Average: {engineData.baseline_aqi}</p>
+
+          <div className="hero-right">
+            <div className="hero-label">European AQI</div>
+            <div
+              className="serif-text hero-number"
+              style={{ color: activeColor }}
+            >
+              {currentEaqi}
+            </div>
+            <div className="hero-status" style={{ color: activeColor }}>
+              {currentLabel}
+            </div>
+            <div className="hero-us-epa">
+              US EPA Equivalent:{" "}
+              <strong className="us-epa-bold">{usAqiEstimate}</strong>
+            </div>
+          </div>
         </div>
       </section>
 
-      {/* THE CHARTS GRID */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '2rem' }}>
-        
-        {/* CHART 1: SHAP EXPLAINABILITY */}
-        <div style={{ backgroundColor: '#1E293B', padding: '1.5rem', borderRadius: '12px' }}>
-          <h3 style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: 0 }}>
-            <Wind color="#A78BFA" /> What is driving today's AQI? (AI Explainability)
+      <section className="daily-forecast-grid">
+        {dailyForecasts.map((day, idx) => {
+          const dayColor = getEaqiColor(day.aqi);
+          const dayLabel = getEaqiLabel(day.aqi);
+          return (
+            <div
+              key={idx}
+              className="daily-card"
+              style={{ borderTop: `6px solid ${dayColor}` }}
+            >
+              <div className="daily-date">{day.date}</div>
+              <div
+                className="serif-text daily-number"
+                style={{ color: dayColor }}
+              >
+                {day.aqi}
+              </div>
+              <div className="daily-label">{dayLabel}</div>
+            </div>
+          );
+        })}
+      </section>
+
+      <div className="charts-grid">
+        <div className="chart-card">
+          <h3 className="chart-title">
+            <Sparkles size={28} color="var(--terracotta)" /> The "Why"
           </h3>
-          <p style={{ color: '#94A3B8', fontSize: '0.9rem', marginBottom: '1.5rem' }}>
-            Our Random Forest calculates how much each weather metric pushes the AQI up (pollution) or down (clean air).
+          <p className="chart-subtitle">
+            What is driving the pollution up (terracotta) or cleaning it out
+            (green)?
           </p>
-          <div style={{ height: '300px', width: '100%' }}>
+          <div className="chart-container">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={engineData.drivers} layout="vertical" margin={{ top: 5, right: 30, left: 40, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#334155" horizontal={false} />
-                <XAxis type="number" stroke="#94A3B8" />
-                <YAxis dataKey="metric" type="category" stroke="#94A3B8" width={100} />
-                <Tooltip contentStyle={{ backgroundColor: '#0F172A', border: '1px solid #334155' }} />
-                <ReferenceLine x={0} stroke="#94A3B8" />
+              <BarChart
+                data={engineData.drivers}
+                layout="vertical"
+                margin={{ top: 5, right: 30, left: 50, bottom: 5 }}
+              >
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke="rgba(255,255,255,0.05)"
+                  horizontal={false}
+                />
+                <XAxis type="number" stroke="var(--muted-text)" />
+                <YAxis
+                  dataKey="metric"
+                  type="category"
+                  stroke="var(--off-white)"
+                  width={140}
+                  tick={{ fontFamily: "DM Sans", fontSize: "1.1rem" }}
+                />
+                <Tooltip
+                  cursor={{ fill: "rgba(255,255,255,0.02)" }}
+                  contentStyle={{
+                    backgroundColor: "var(--card-dark)",
+                    border: "none",
+                    borderRadius: "8px",
+                    color: "var(--off-white)",
+                  }}
+                />
+                <ReferenceLine x={0} stroke="rgba(255,255,255,0.2)" />
                 <Bar dataKey="impact" radius={[0, 4, 4, 0]}>
-                  {
-                    engineData.drivers.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.impact > 0 ? '#EF4444' : '#10B981'} />
-                    ))
-                  }
+                  {engineData.drivers.map((entry, index) => (
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={
+                        entry.impact > 0
+                          ? "var(--terracotta)"
+                          : "var(--forest-green)"
+                      }
+                    />
+                  ))}
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
 
-        {/* CHART 2: 72-HOUR FORECAST */}
-        <div style={{ backgroundColor: '#1E293B', padding: '1.5rem', borderRadius: '12px' }}>
-          <h3 style={{ marginTop: 0 }}>72-Hour Horizon Forecast</h3>
-          <div style={{ height: '300px', width: '100%' }}>
+        <div className="chart-card">
+          <h3 className="chart-title">
+            <Wind size={28} color="var(--forest-green)" /> The Horizon
+          </h3>
+          <p className="chart-subtitle">
+            72-hour predictive modeling (EAQI Scale).
+          </p>
+          <div className="chart-container">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={engineData.horizon_forecast}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                <XAxis dataKey="time" stroke="#94A3B8" tickFormatter={(tick) => tick.split(' ')[1]} />
-                <YAxis stroke="#94A3B8" />
-                <Tooltip contentStyle={{ backgroundColor: '#0F172A', border: '1px solid #334155' }} />
-                <Line type="monotone" dataKey="predicted_aqi" stroke="#38BDF8" strokeWidth={3} dot={false} />
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke="rgba(255,255,255,0.05)"
+                />
+                <XAxis
+                  dataKey="time"
+                  stroke="var(--muted-text)"
+                  tick={{ fontSize: "1rem" }}
+                  tickFormatter={(tick) => {
+                    const [datePart, timePart] = tick.split(" ");
+                    const [, month, day] = datePart.split("-");
+                    const hour = timePart.slice(0, 5);
+                    return `${month}/${day} ${hour}`;
+                  }}
+                />
+                <YAxis stroke="var(--muted-text)" tick={{ fontSize: "1rem" }} />
+                <Tooltip
+                  cursor={{ stroke: "rgba(255,255,255,0.1)" }}
+                  contentStyle={{
+                    backgroundColor: "var(--card-dark)",
+                    border: "none",
+                    borderRadius: "8px",
+                    color: "var(--off-white)",
+                  }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="predicted_aqi"
+                  stroke="var(--terracotta)"
+                  strokeWidth={4}
+                  dot={false}
+                  activeDot={{ r: 8, fill: "var(--terracotta)" }}
+                />
               </LineChart>
             </ResponsiveContainer>
           </div>
         </div>
-
       </div>
     </div>
   );
