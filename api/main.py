@@ -68,7 +68,7 @@ def generate_forecast():
         timeline = telemetry_matrix['time'].astype(str).tolist()
         x_matrix = telemetry_matrix.drop(columns=['time', 'european_aqi'], errors='ignore')
         forecast_array = prophet_ensemble.predict(x_matrix)
-        current_features = x_matrix.iloc[0:1]
+        current_features = x_matrix.iloc[-1:]
         shap_matrix = quantum_explainer.shap_values(current_features)[0]
         
         feature_labels = x_matrix.columns.tolist()
@@ -90,8 +90,8 @@ def generate_forecast():
             safe_baseline = raw_baseline
 
         return {
-            "nexus_timestamp": timeline[0],
-            "current_aqi": round(float(forecast_array[0]), 2),
+            "nexus_timestamp": timeline[-1],
+            "current_aqi": round(float(forecast_array[-1]), 2),
             "baseline_aqi": round(float(safe_baseline), 2), 
             "drivers": explainability_payload,
             "horizon_forecast": [
