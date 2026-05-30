@@ -25,7 +25,7 @@ function App() {
     const fetchForecast = async () => {
       try {
         const response = await axios.get(
-          "http://127.0.0.1:8000/api/v1/forecast",
+          "https://pearl-aqi-api.onrender.com",
         );
         setEngineData(response.data);
         setLoading(false);
