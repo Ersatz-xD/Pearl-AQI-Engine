@@ -2,7 +2,7 @@ fastapi==0.136.3
 uvicorn==0.48.0
 hopsworks==4.8.1
 pandas==2.3.3
-scikit-learn==1.8.0
+scikit-learn==1.7.2
 joblib==1.5.3
 shap==0.51.0
 numpy<2.0.0
