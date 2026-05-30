@@ -124,7 +124,7 @@ function App() {
           </p>
         </div>
         <div className="header-updated">
-          Updated: {engineData.nexus_timestamp.split(" ")[1]}
+          Updated: {engineData?.nexus_timestamp ? engineData.nexus_timestamp.split(" ")[1] : "System Syncing..."}
         </div>
       </header>
 
