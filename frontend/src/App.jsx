@@ -16,25 +16,44 @@ import {
 import { Sparkles, Wind } from "lucide-react";
 import "./App.css";
 
+// pd.date_range().astype(str) produces "2026-05-30 14:00:00" —
+// parse it explicitly rather than relying on browser Date() heuristics.
+const parseApiTimestamp = (ts) => {
+  const [datePart, timePart] = ts.split(" ");
+  const [year, month, day] = datePart.split("-").map(Number);
+  const [hour, minute, second] = timePart.split(":").map(Number);
+  return new Date(Date.UTC(year, month - 1, day, hour, minute, second));
+};
+
 function App() {
   const [engineData, setEngineData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    const controller = new AbortController();
+
     const fetchForecast = async () => {
       try {
         const response = await axios.get(
           "https://pearl-aqi-api.onrender.com/api/v1/forecast",
+          { signal: controller.signal, timeout: 90000 }
         );
         setEngineData(response.data);
-        setLoading(false);
       } catch (err) {
-        setError(err.message);
+        if (axios.isCancel(err)) return;
+        if (err.code === "ECONNABORTED") {
+          setError("The forecast engine is waking up. Please refresh in a moment.");
+        } else {
+          setError("Could not reach the forecast API.");
+        }
+      } finally {
         setLoading(false);
       }
     };
+
     fetchForecast();
+    return () => controller.abort();
   }, []);
 
   const getAqiSnark = (eaqi) => {
@@ -78,10 +97,12 @@ function App() {
     const dailyData = {};
 
     forecast.forEach((entry) => {
-      const date = entry.time.split(" ")[0];
-      if (!dailyData[date]) {
-        dailyData[date] = [];
-      }
+      // Convert UTC to PKT (UTC+5) before bucketing by date
+      const utcMs = parseApiTimestamp(entry.time).getTime();
+      const pktDate = new Date(utcMs + 5 * 60 * 60 * 1000);
+      const date = pktDate.toISOString().split("T")[0];
+
+      if (!dailyData[date]) dailyData[date] = [];
       dailyData[date].push(entry.predicted_aqi);
     });
 
@@ -94,7 +115,7 @@ function App() {
       const [, month, day] = date.split("-");
       return {
         date: `${month}/${day}`,
-        aqi: (Math.round(avg * 100) / 100).toFixed(2),
+        aqi: Math.round(avg * 100) / 100,
       };
     });
   };
@@ -105,12 +126,19 @@ function App() {
   if (error)
     return <div className="error-screen">System Malfunction: {error}</div>;
 
-  const currentEaqi = engineData.current_aqi;
+  const currentEaqi = engineData?.current_aqi ?? 0;
+  const baseline = engineData?.baseline_aqi ?? 0;
+  const drivers = engineData?.drivers ?? [];
+  const horizonForecast = engineData?.horizon_forecast ?? [];
+  const generatedAt =
+    (engineData?.generated_at ?? engineData?.nexus_timestamp ?? "")
+      .split(" ")[1] ?? "—";
+
   const snark = getAqiSnark(currentEaqi);
   const activeColor = getEaqiColor(currentEaqi);
   const usAqiEstimate = convertEaqiToUsAqi(currentEaqi);
   const currentLabel = getEaqiLabel(currentEaqi);
-  const dailyForecasts = getDailyForecasts(engineData.horizon_forecast);
+  const dailyForecasts = getDailyForecasts(horizonForecast);
 
   return (
     <div className="dashboard-container">
@@ -123,9 +151,7 @@ function App() {
             Islamabad Telemetry • Powered by Hopsworks & MLflow
           </p>
         </div>
-        <div className="header-updated">
-          Updated: {engineData?.nexus_timestamp ? engineData.nexus_timestamp.split(" ")[1] : "System Syncing..."}
-        </div>
+        <div className="header-updated">Updated: {generatedAt}</div>
       </header>
 
       <section className="hero-card">
@@ -133,7 +159,7 @@ function App() {
           <div className="hero-left">
             <h2 className="hero-title">{snark}</h2>
             <p className="hero-subtitle">
-              Based on a baseline average of {engineData.baseline_aqi} EAQI.
+              Based on a baseline average of {baseline} EAQI.
             </p>
           </div>
 
@@ -157,12 +183,12 @@ function App() {
       </section>
 
       <section className="daily-forecast-grid">
-        {dailyForecasts.map((day, idx) => {
+        {dailyForecasts.map((day) => {
           const dayColor = getEaqiColor(day.aqi);
           const dayLabel = getEaqiLabel(day.aqi);
           return (
             <div
-              key={idx}
+              key={day.date}
               className="daily-card"
               style={{ borderTop: `6px solid ${dayColor}` }}
             >
@@ -171,7 +197,7 @@ function App() {
                 className="serif-text daily-number"
                 style={{ color: dayColor }}
               >
-                {day.aqi}
+                {day.aqi.toFixed(2)}
               </div>
               <div className="daily-label">{dayLabel}</div>
             </div>
@@ -188,10 +214,11 @@ function App() {
             What is driving the pollution up (terracotta) or cleaning it out
             (green)?
           </p>
-          <div className="chart-container">
-            <ResponsiveContainer width="100%" height="100%">
+          {/* explicit px height so ResponsiveContainer has a resolved dimension to measure */}
+          <div className="chart-container" style={{ minHeight: "400px" }}>
+            <ResponsiveContainer width="100%" height={400}>
               <BarChart
-                data={engineData.drivers}
+                data={drivers}
                 layout="vertical"
                 margin={{ top: 5, right: 30, left: 50, bottom: 5 }}
               >
@@ -219,7 +246,7 @@ function App() {
                 />
                 <ReferenceLine x={0} stroke="rgba(255,255,255,0.2)" />
                 <Bar dataKey="impact" radius={[0, 4, 4, 0]}>
-                  {engineData.drivers.map((entry, index) => (
+                  {drivers.map((entry, index) => (
                     <Cell
                       key={`cell-${index}`}
                       fill={
@@ -242,9 +269,9 @@ function App() {
           <p className="chart-subtitle">
             72-hour predictive modeling (EAQI Scale).
           </p>
-          <div className="chart-container">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={engineData.horizon_forecast}>
+          <div className="chart-container" style={{ minHeight: "400px" }}>
+            <ResponsiveContainer width="100%" height={400}>
+              <LineChart data={horizonForecast}>
                 <CartesianGrid
                   strokeDasharray="3 3"
                   stroke="rgba(255,255,255,0.05)"
