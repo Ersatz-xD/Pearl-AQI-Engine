@@ -16,12 +16,18 @@ import {
 import { Sparkles, Wind } from "lucide-react";
 import "./App.css";
 
-// pd.date_range().astype(str) produces "2026-05-30 14:00:00" —
-// parse it explicitly rather than relying on browser Date() heuristics.
+
 const parseApiTimestamp = (ts) => {
-  const [datePart, timePart] = ts.split(" ");
+  const cleanTs = ts.split("+")[0]; 
+  const [datePart, timePart] = cleanTs.split(" ");
+  
   const [year, month, day] = datePart.split("-").map(Number);
-  const [hour, minute, second] = timePart.split(":").map(Number);
+  const timeParts = timePart.split(":");
+  
+  const hour = Number(timeParts[0]);
+  const minute = Number(timeParts[1]);
+  const second = timeParts[2] ? Number(timeParts[2]) : 0;
+  
   return new Date(Date.UTC(year, month - 1, day, hour, minute, second));
 };
 
@@ -97,7 +103,6 @@ function App() {
     const dailyData = {};
 
     forecast.forEach((entry) => {
-      // Convert UTC to PKT (UTC+5) before bucketing by date
       const utcMs = parseApiTimestamp(entry.time).getTime();
       const pktDate = new Date(utcMs + 5 * 60 * 60 * 1000);
       const date = pktDate.toISOString().split("T")[0];
@@ -214,7 +219,6 @@ function App() {
             What is driving the pollution up (terracotta) or cleaning it out
             (green)?
           </p>
-          {/* explicit px height so ResponsiveContainer has a resolved dimension to measure */}
           <div className="chart-container" style={{ minHeight: "400px" }}>
             <ResponsiveContainer width="100%" height={400}>
               <BarChart
