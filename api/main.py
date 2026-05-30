@@ -89,6 +89,10 @@ def generate_forecast():
         else:
             safe_baseline = raw_baseline
 
+        latest_time = pd.to_datetime(timeline[-1])
+        future_dates = pd.date_range(start=latest_time, periods=len(forecast_array), freq='h')
+        future_timeline = future_dates.astype(str).tolist()
+
         return {
             "nexus_timestamp": timeline[-1],
             "current_aqi": round(float(forecast_array[-1]), 2),
@@ -96,7 +100,7 @@ def generate_forecast():
             "drivers": explainability_payload,
             "horizon_forecast": [
                 {"time": t, "predicted_aqi": round(float(aqi), 2)} 
-                for t, aqi in zip(timeline, forecast_array)
+                for t, aqi in zip(future_timeline, forecast_array)
             ]
         }
         
