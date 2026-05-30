@@ -8,6 +8,7 @@ certifi==2026.4.22
 cffi==2.0.0
 charset-normalizer==3.4.7
 click==8.4.1
+cloudpickle==3.1.2
 confluent-kafka==2.14.0
 cryptography==48.0.0
 fastapi==0.136.3
@@ -23,7 +24,9 @@ idna==3.13
 javaobj-py3==0.4.4
 jmespath==1.1.0
 joblib==1.5.3
+llvmlite==0.47.0
 mock==5.2.0
+numba==0.65.1
 numpy==2.4.4
 opensearch-py==2.4.2
 orderedmultidict==1.0.2
@@ -48,7 +51,9 @@ retrying==1.4.2
 s3transfer==0.17.0
 scikit-learn==1.8.0
 scipy==1.17.1
+shap==0.51.0
 six==1.17.0
+slicer==0.0.8
 SQLAlchemy==2.0.41
 starlette==1.1.0
 threadpoolctl==3.6.0
