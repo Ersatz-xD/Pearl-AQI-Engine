@@ -199,7 +199,7 @@ h1, h2, h3, .serif-text {
 .chart-card {
   background-color: var(--card-dark);
   border-radius: 24px;
-  padding: 3rem;
+  padding: 1.5rem 3rem;
   border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
@@ -218,6 +218,6 @@ h1, h2, h3, .serif-text {
 }
 
 .chart-container {
-  height: 450px;
+  height: 400px;
   width: 100%;
 }
