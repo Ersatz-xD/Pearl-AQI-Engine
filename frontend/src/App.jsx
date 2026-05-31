@@ -112,8 +112,7 @@ function App() {
     });
 
     const dates = Object.keys(dailyData);
-    const futureDates = dates.slice(1, 4);
-
+    const futureDates = dates.slice(0, 3);
     return futureDates.map((date) => {
       const avg =
         dailyData[date].reduce((a, b) => a + b, 0) / dailyData[date].length;
