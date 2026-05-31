@@ -44,7 +44,7 @@ def engineer_features(df):
     df_engineered["day_of_week"] = df_engineered["time"].dt.dayofweek
     df_engineered["month"] = df_engineered["time"].dt.month
 
-    df_engineered["timestamp_epoch"] = df_engineered["time"].astype("int64") // 10**9
+     
 
     return df_engineered
 
@@ -56,7 +56,7 @@ def push_to_feature_store(df):
     weather_fg = fs.get_or_create_feature_group(
         name="pearl_weather_features_v1",
         version=1,
-        primary_key=["timestamp_epoch"],
+        primary_key=["time"],
         event_time="time",
         description="Hourly AQI and met features for Islamabad",
     )
