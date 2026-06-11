@@ -17,7 +17,7 @@ furl==2.1.4
 greenlet==3.5.0
 grpcio==1.80.0
 h11==0.16.0
-hopsworks==4.8.1
+hopsworks==5.0.*
 hopsworks-aiomysql==0.2.2
 hopsworks-apigen==1.0.5
 idna==3.13
